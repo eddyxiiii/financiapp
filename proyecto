@@ -1,119 +1,114 @@
-import locale
-import hashlib
-
-locale.setlocale(locale.LC_ALL, '')
-
 class Usuario:
     def __init__(self, nombre, contrasena):
         # Constructor de la clase Usuario
-        self.nombre = nombre
-        # Encriptamos la contraseña antes de almacenarla
-        self.contrasena_hash = self._encriptar_contrasena(contrasena)
-        # Inicializamos el registro financiero y el superávit
-        self.registro_financiero = {}
-        self.superavit = 0
+        # Inicializa los atributos de la clase Usuario
+        self.nombre = nombre  # Nombre del usuario
+        self.contrasena = contrasena  # Contraseña del usuario
+        self.registro = []  # Lista para almacenar los gastos del usuario
 
-    def _encriptar_contrasena(self, contrasena):
-        # Método para encriptar la contraseña utilizando hash SHA-256
-        return hashlib.sha256(contrasena.encode()).hexdigest()
+    def agregar_gasto(self, categoria, monto):
+        # Método para agregar un gasto al registro del usuario
+        self.registro.append((categoria, monto))  # Agrega el gasto al registro
 
-    def agregar_registro_financiero(self, categoria, gasto):
-        # Método para agregar un gasto al registro financiero del usuario
-        if gasto <= 0:
-            print("El monto del gasto debe ser un número positivo.")
-            return
-        if categoria in self.registro_financiero:
-            self.registro_financiero[categoria] += gasto
-        else:
-            self.registro_financiero[categoria] = gasto
-
-    def calcular_balance(self, ingresos):
-        # Método para calcular el balance entre ingresos y gastos
-        total_gastos = sum(self.registro_financiero.values())
+    def mostrar_resumen_financiero(self, ingresos):
+        # Método para mostrar un resumen financiero del usuario
+        # Calcula el total de gastos del usuario
+        total_gastos = sum(monto for _, monto in self.registro)
+        # Calcula el balance (ingresos - gastos)
         balance = ingresos - total_gastos
-        return balance
+        # Muestra el resumen financiero del usuario
+        print(f"Resumen financiero de {self.nombre}:")
+        print(f"Ingresos mensuales: ${ingresos:,.2f} pesos")
+        print(f"Total de gastos: ${total_gastos:,.2f} pesos")
+        if balance > 0:
+            print(f"Felicidades, te ha quedado un superávit de ${balance:,.2f} pesos este mes.")
+        elif balance < 0:
+            print(f"¡Tienes un déficit! Gastaste ${abs(balance):,.2f} pesos más de lo que ganaste este mes.")
+        else:
+            print("Gastaste exactamente lo que ganaste este mes.")
 
-    def calcular_porcentaje_gasto(self, ingresos):
-        # Método para calcular el porcentaje de gastos respecto a los ingresos
-        if ingresos == 0:
-            return 0
-        total_gastos = sum(self.registro_financiero.values())
-        porcentaje_gasto = (total_gastos / ingresos) * 100
-        return porcentaje_gasto
+
+def crear_cuenta(usuarios):
+    # Función para crear una cuenta de usuario
+    nombre = input("Ingrese un nombre de usuario: ")
+    contrasena = input("Ingrese una contraseña: ")
+    if nombre not in usuarios:
+        # Crea un nuevo usuario y lo agrega al diccionario de usuarios
+        usuarios[nombre] = Usuario(nombre, contrasena)
+        print("Cuenta creada exitosamente. Ahora puede iniciar sesión.")
+    else:
+        print("El nombre de usuario ya está en uso. Por favor, elija otro.")
+
+
+def iniciar_sesion(usuarios):
+    # Función para iniciar sesión
+    nombre = input("Nombre de usuario: ")
+    contrasena = input("Contraseña: ")
+    if nombre in usuarios and usuarios[nombre].contrasena == contrasena:
+        # Si las credenciales son válidas, devuelve el usuario correspondiente
+        print(f"Bienvenido, {nombre}!")
+        return usuarios[nombre]
+    else:
+        print("Nombre de usuario o contraseña incorrectos.")
+        return None
+
 
 def ingresar_ingresos():
     # Función para ingresar los ingresos mensuales del usuario
     while True:
-        ingresos_str = input("Ingrese sus ingresos mensuales: ")
+        # Solicita al usuario que ingrese sus ingresos mensuales
+        ingresos_str = input("Ingrese sus ingresos mensuales en pesos: ").replace(',', '').replace('.', '')  # Eliminar comas y puntos
         try:
-            ingresos = locale.atof(ingresos_str)
-            return ingresos
+            ingresos = float(ingresos_str)
+            if ingresos < 0:
+                print("Error: Los ingresos no pueden ser negativos.")
+            else:
+                return ingresos
         except ValueError:
-            print("Por favor, ingrese un número válido.")
+            print("Error: Por favor, ingrese un número válido para los ingresos.")
 
-def ingresar_registro_financiero(usuario):
+
+def ingresar_gastos(usuario):
     # Función para ingresar los gastos del usuario
-    ingresos = ingresar_ingresos()
-    print("\nPor favor, proporcione los gastos:")
+    print("Por favor, ingrese sus gastos.")
     while True:
-        categoria = input("Introduzca el nombre de la categoría de gastos (escriba 'fin' para terminar): ")
+        categoria = input("Ingrese la categoría de gasto (o 'fin' para terminar): ")
         if categoria.lower() == 'fin':
             break
         while True:
             try:
-                gasto = locale.atof(input(f"Ingrese el monto de gasto en '{categoria}': "))
-                if gasto <= 0:
-                    print("El monto del gasto debe ser un número positivo.")
-                    continue
-                break
+                # Solicita al usuario que ingrese el monto del gasto
+                monto_str = input(f"Ingrese el monto del gasto en '{categoria}': ").replace(',', '').replace('.', '')  # Eliminar comas y puntos
+                monto = float(monto_str)
+                if monto < 0:
+                    print("Error: El monto del gasto no puede ser negativo.")
+                else:
+                    # Agrega el gasto al registro del usuario
+                    usuario.agregar_gasto(categoria, monto)
+                    break
             except ValueError:
-                print("Por favor, ingrese un número válido.")
-        usuario.agregar_registro_financiero(categoria, gasto)
+                print("Error: Por favor, ingrese un número válido para el monto del gasto.")
 
-    balance = usuario.calcular_balance(ingresos)
-    porcentaje_gasto = usuario.calcular_porcentaje_gasto(ingresos)
-    print("\nResumen financiero:")
-    print(f"Ingresos: {locale.currency(ingresos, grouping=True)}")
-    for categoria, gasto in usuario.registro_financiero.items():
-        print(f"{categoria.capitalize()}: {locale.currency(gasto, grouping=True)}")
-    print(f"\nBalance mensual: {locale.currency(balance, grouping=True)}")
-
-    if balance < 0:
-        print("¡Has gastado más de lo que has ganado este mes!")
-    elif balance > 0:
-        print("¡Has gastado menos de lo que has ganado este mes!")
-        usuario.superavit += balance
-        print(f"Felicidades, te ha quedado un superávit de {locale.currency(balance, grouping=True)} este mes.")
-    else:
-        print("Has gastado exactamente lo que has ganado este mes.")
-
-    print(f"Porcentaje de gasto sobre ingresos: {porcentaje_gasto:.2f}%")
 
 def main():
-    print("¡Bienvenido a FinanciApp!")
-    usuarios = {}
+    # Función principal del programa
+    usuarios = {}  # Diccionario para almacenar los usuarios y sus datos
     while True:
-        opcion = input("Por favor, seleccione una opción:\n1. Iniciar sesión\n2. Registrarse\n3. Salir\nOpción: ")
+        opcion = input("Seleccione una opción:\n1. Iniciar sesión\n2. Crear una cuenta\n3. Salir\nOpción: ")
         if opcion == '1':
-            nombre = input("Nombre completo: ")
-            contrasena = input("Contraseña: ")
-            contrasena_hash = hashlib.sha256(contrasena.encode()).hexdigest()
-            if nombre in usuarios and usuarios[nombre].contrasena_hash == contrasena_hash:
-                usuario = usuarios[nombre]
-                print("\n¡Inicio de sesión exitoso! Bienvenido de nuevo a FinanciApp.")
-                ingresar_registro_financiero(usuario)
-            else:
-                print("\nInicio de sesión fallido. Verifique sus datos e intente nuevamente o registre una nueva cuenta.\n")
+            usuario = iniciar_sesion(usuarios)
+            if usuario:
+                ingresos = ingresar_ingresos()
+                ingresar_gastos(usuario)
+                usuario.mostrar_resumen_financiero(ingresos)
         elif opcion == '2':
-            nombre = input("Nombre completo: ")
-            contrasena = input("Ingrese una contraseña para FinanciApp: ")
-            usuarios[nombre] = Usuario(nombre, contrasena)
-            print("\n¡Registro exitoso! Ahora puedes iniciar sesión.")
+            crear_cuenta(usuarios)
         elif opcion == '3':
-            print("¡Gracias por utilizar FinanciApp! Hasta luego.")
+            print("¡Gracias por usar FinanciApp vuelve pronto! ")
             break
         else:
             print("Opción no válida. Por favor, seleccione una opción válida.")
+
 
 if __name__ == "__main__":
     main()
